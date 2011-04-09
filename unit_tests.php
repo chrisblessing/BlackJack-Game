@@ -48,9 +48,9 @@ $bust_count = 0 ;
 $blackjack_count = 0 ;
 $held_count = 0 ;
 
-$game_count = 100000 ;
+$game_count = 1000 ;
 $actual_game_count = 0 ; 	// incremented via iteration
-$deck_count = 6 ;
+$deck_count = 1 ;
 $shuffle_count = 8 ;
 $num_players = 6 ; 			// # hands to deal (player count + dealer)
 $num_cards_per_hand = 2 ; 	// # cards per hand (game-dependent)
@@ -93,9 +93,17 @@ for( $game=0; $game<$game_count; $game+=1 )
 	// check the MultiDeck to ensure we have enough cards for this game, if not, then reissue the shoe and start a new game
 	if( $cards_remaining < $necessary_card_count )
 	{
-		// start a new game with a new shoe
-		print "\t\tCanceling game #{$game}; generating new shoe of {$deck_count} decks...\n" ;
-		$deck = new MultiDeck( $deck_count, FALSE ) ;
+		// start a new game with a new shoe (both of the following lines are reasonable methods but I like recycling with reset()
+		//print $deck->get_as_string() ;
+		
+		//$deck = new MultiDeck( $deck_count, FALSE ) ;
+		$deck->reset() ;	// about 10% faster than 'new' over 5000 games with 6 players
+		$deck->reorder() ;
+		
+		print $deck->get_as_string() ;
+		exit;
+		
+		//print "Resetting shoe with {$cards_remaining} cards remaining, new deck of {$deck->get_number_of_cards()}...\n" ;
 		$deck->shuffle( $shuffle_count ) ;
 		$deck->cut() ;
 		continue ;
@@ -166,21 +174,21 @@ for( $game=0; $game<$game_count; $game+=1 )
 		
 		if( $hand->is_dealer_hand() )
 		{
-			print "\nDealer Hand #{$i}:\n" ;
+			//print "\nDealer Hand #{$i}:\n" ;
 			$max_hand_value = 17 ;	// hard stop on 17, no more hits for the dealer
 		}
 		else
 		{
-			print "\nHand #{$i}:\n" ;	
+			//print "\nHand #{$i}:\n" ;	
 		}
 		
 		// get the first summation of this hand
 		$sum = $hand->get_card_sum_value() ;
 		
 		// first showing of each hand so we may commence with the drawing, dealer's first card will be hidden
-		print $hand->get_as_string() . '[' . ( !$hand->is_dealer_hand() ? "{$sum}" : "*" ) . "]\n" ;
+		//print $hand->get_as_string() . '[' . ( !$hand->is_dealer_hand() ? "{$sum}" : "*" ) . "]\n" ;
 		
-		print "\n\tset {$i} as drawing...\n" ;
+		//print "\n\tset {$i} as drawing...\n" ;
 		$hand->set_as_drawing() ;
 		
 		while( $sum < $max_hand_value && $sum < $player_min_hold_value ) // automatic stop at 17 for players and dealers, who hits after 17?
@@ -193,7 +201,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 				
 				// re-sum the hand with this new card in mind
 				$sum = $hand->get_card_sum_value() ;
-				print "\t" . $hand->get_as_string() . " [{$sum}]\n"  ;
+				//print "\t" . $hand->get_as_string() . " [{$sum}]\n"  ;
 			}
 			catch( Exception $e )
 			{
@@ -221,7 +229,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 			$held_count += 1 ;
 		}
 		
-		print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
+		//print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
 	}
 }
 

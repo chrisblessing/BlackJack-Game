@@ -204,9 +204,10 @@ class Card
 class Deck
 {
 	protected $cards = array() ;
-	private $drawn_cards = array() ;
+	protected $deck_count = 1 ;
+	protected $drawn_cards = array() ;
 	
-	public function __construct( $cards = NULL, $shuffle = TRUE )
+	public function __construct( $cards = NULL, $shuffle = FALSE )
 	{
 		if( is_array( $cards ) && count( $cards ) > 0 )
 		{
@@ -229,6 +230,17 @@ class Deck
 			}
 		}
 	}
+	
+	public function reorder()
+	{
+		if( count( $this->drawn_cards === 0 ) )
+		{
+			natsort( $this->cards ) ;		
+		}
+		else
+		{
+			throw new Exception( "Cannot reorder an incomplete deck; cards have already been drawn." ) ;
+		}	}
 	
 	public function get_card()
 	{
@@ -258,6 +270,24 @@ class Deck
 	public function add_card( Card $card )
 	{}
 	
+	public function get_deck_count()
+	{
+		return $this->deck_count ;
+	}
+	
+	public function reset()
+	{
+		foreach( $this->drawn_cards as $card )
+		{
+			$this->cards[] = $card ;
+		}
+		
+		//$count = count($this->cards) ;
+		//print "reset deck to {$count} cards...\n" ;
+		
+		$this->drawn_cards = array() ;
+	}
+	
 	public function shuffle( $n = 1 )
 	{
 		$n = (int)$n ;
@@ -270,6 +300,31 @@ class Deck
 	public function get_all_cards()
 	{
 		return $this->cards ;
+	}
+	
+	public function get_as_string()
+	{
+		$count = count( $this->cards ) ;
+		$deck_str = "\n### Printing deck... \n\tCards avail [{$count}]:\n" ;
+		
+		natsort( $this->cards ) ;
+		foreach( $this->cards as $card )
+		{
+			$deck_str .= $card->get_as_string() . " " ;
+		}
+
+		$count = count( $this->drawn_cards ) ;
+		$deck_str .= "\n\n\tCards drawn [{$count}]:\n" ;
+		
+		natsort( $this->drawn_cards ) ;
+		foreach( $this->drawn_cards as $card )
+		{
+			$deck_str .= $card->get_as_string() . " " ;			
+		}
+		
+		$deck_str .= "" ;
+		
+		return $deck_str ;
 	}
 	
 	public function cut()
@@ -287,9 +342,11 @@ class Deck
 
 class MultiDeck extends Deck
 {
-	public function __construct( $n, $shuffle = TRUE )
+	public function __construct( $n, $shuffle = FALSE )
 	{
 		$n = (int)$n ;
+		$this->deck_count = $n ;
+		
 		$deck = new Deck( NULL, $shuffle ) ;
 		$cards = $deck->get_all_cards() ;
 			
@@ -310,7 +367,7 @@ class MultiDeck extends Deck
 				$j++ ;
 			}
 		}
-	}	
+	}
 }
 
 class Hand
