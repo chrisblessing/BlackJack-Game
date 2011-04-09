@@ -3,15 +3,6 @@ require( 'Cards.php' ) ;
 require( 'DB.php' ) ;
 header( 'Content-type: text/plain' ) ;
 
-// MySQL db to track hands in batches
-$mysqli = new mysqli( $hostname, $username, $password, $db_name );
-if (mysqli_connect_error()) {
-    die('Connect Error (' . mysqli_connect_errno() . ') '
-            . mysqli_connect_error());
-}
-
-print "\nDB connection successful... (" . $mysqli->host_info . ")\n\n";
-
 /*
 $card = new Card( CLUBS, ACE ) ;
 var_dump( $card->get() ) ;
@@ -57,11 +48,11 @@ $bust_count = 0 ;
 $blackjack_count = 0 ;
 $held_count = 0 ;
 
-$game_count = 1 ;
+$game_count = 100000 ;
 $actual_game_count = 0 ; 	// incremented via iteration
 $deck_count = 6 ;
 $shuffle_count = 8 ;
-$num_players = 3 ; 			// # hands to deal (player count + dealer)
+$num_players = 6 ; 			// # hands to deal (player count + dealer)
 $num_cards_per_hand = 2 ; 	// # cards per hand (game-dependent)
 $necessary_card_count = ( $num_players * $num_cards_per_hand ) + 52 ;	// modify this for single and double deck blackjack
 	
@@ -234,22 +225,31 @@ for( $game=0; $game<$game_count; $game+=1 )
 	}
 }
 
-	print "\nGames attempted: {$game} (actual: {$actual_game_count})\nResults:\n" ;
-	print "Held: {$held_count}\nBust: {$bust_count}\nBlackjack: {$blackjack_count}\n" ;
-	
-	$uniqid = uniqid() ;
-	
-	print "Game group id: {$uniqid}\n" ;
-	$sql = "INSERT INTO blackjack_hands (group_id, game_count, bust_count, hold_count, blackjack_count, player_count, deck_count) VALUES ('{$uniqid}', '{$actual_game_count}', '{$bust_count}', '{$held_count}', '{$blackjack_count}', '{$num_players}', '{$deck_count}')" ;
-	
-	print "Making DB insertion...\n" ;
-	if( $mysqli->query( $sql ) === FALSE ) 
-	{
-		die( "Error: could not insert the game data into the db" ) ;
-	}
-	
-	//print "\n\nCards remaining: " ;
-	//print count( $deck->get_all_cards() );
+print "\nGames attempted: {$game} (actual: {$actual_game_count})\nResults:\n" ;
+print "Held: {$held_count}\nBust: {$bust_count}\nBlackjack: {$blackjack_count}\n" ;
+
+$uniqid = uniqid() ;
+
+print "Game group id: {$uniqid}\n" ;
+$sql = "INSERT INTO blackjack_hands (group_id, game_count, bust_count, hold_count, blackjack_count, player_count, deck_count) VALUES ('{$uniqid}', '{$actual_game_count}', '{$bust_count}', '{$held_count}', '{$blackjack_count}', '{$num_players}', '{$deck_count}')" ;
+
+// MySQL db to track hands in batches
+$mysqli = new mysqli( $hostname, $username, $password, $db_name );
+if (mysqli_connect_error()) {
+    die('Connect Error (' . mysqli_connect_errno() . ') '
+            . mysqli_connect_error());
+}
+
+print "\nDB connection successful... (" . $mysqli->host_info . ")\n\n";
+print "Making DB insertion...\n" ;
+
+if( $mysqli->query( $sql ) === FALSE ) 
+{
+	die( "Error: could not insert the game data into the db" ) ;
+}
+
+//print "\n\nCards remaining: " ;
+//print count( $deck->get_all_cards() );
 	
 // static example of a hand with an Ace resulting in ace reduction to 1
 /*
@@ -305,6 +305,7 @@ print "\n" ;
 */
 
 // ace reduction test
+/*
 $hand = new BlackJackHand() ;
 $hand->add_card( new Card( 0, ACE ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
@@ -331,6 +332,7 @@ $hand->add_card( new Card( 0, 3 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 $hand->add_card( new Card( 0, 2 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+*/
 
 $duration = ( microtime( true ) - $start ) * 1000 ; 	// miliseconds
 $end_mem = ( memory_get_usage() - $start_mem ) / 1024 ;
