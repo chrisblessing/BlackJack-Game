@@ -183,7 +183,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 		print "\n\tset {$i} as drawing...\n" ;
 		$hand->set_as_drawing() ;
 		
-		while( $sum < $max_hand_value && $sum < $player_min_hold_value ) // automatic stop at 17 for players
+		while( $sum < $max_hand_value && $sum < $player_min_hold_value ) // automatic stop at 17 for players and dealers, who hits after 17?
 		//while( $sum < $max_hand_value && $draw === TRUE ) 	// ask for user input
 		{
 			try
@@ -256,7 +256,7 @@ print "\n" ;
 */
 
 // static test of hand comparison
-
+/*
 $hand1 = new BlackJackHand() ;
 $hand1->add_card( new Card( 0, ACE ) ) ;
 $hand1->add_card( new Card( 2, 2 ) ) ;
@@ -266,11 +266,11 @@ $hand2 = new BlackJackHand() ;
 $hand2->add_card( new Card( 0, ACE ) ) ;
 $hand2->add_card( new Card( 0, 3 ) ) ;
 
+print "\nhand1: {$hand1->get_as_string()}\thand2: {$hand2->get_as_string()}\n" ;
+
 $is_equal = (int) BlackJackHandEvaluator::compare_for_equality( $hand1, $hand2 ) ;
 $hand1_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand1 ) ;
 $hand2_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand2 ) ;
-
-print "\nhand1: {$hand1->get_as_string()}\thand2: {$hand2->get_as_string()}\n" ;
 
 print "is hand1 blackjack? {$hand1_bj_status}\n" ;
 print "is hand2 blackjack? {$hand2_bj_status}\n" ;
@@ -282,7 +282,7 @@ if( !$is_equal )
 	$highest_hand = BlackJackHandEvaluator::compare_for_highest_hand( $hand1, $hand2 ) ;
 	print "the larger hand is: {$highest_hand->get_as_string()}\n" ;
 }
-
+*/
 
 // dealer hand display test
 /*
@@ -299,22 +299,28 @@ print "\n" ;
 $hand = new BlackJackHand() ;
 $hand->add_card( new Card( 0, ACE ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 3 ) ) ;
+$hand->add_card( new Card( 0, 2 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 $hand->add_card( new Card( 0, 2 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 $hand->add_card( new Card( 0, ACE ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 2 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 2 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 
 
 $hand = new BlackJackHand() ;
 $hand->add_card( new Card( 0, 3 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 1, ACE ) ) ;
+$hand->add_card( new Card( 0, ACE ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 3, ACE ) ) ;
+$hand->add_card( new Card( 0, ACE ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 7 ) ) ;
+$hand->add_card( new Card( 0, 3 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 2 ) ) ;
 print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 
 $duration = ( microtime( true ) - $start ) * 1000 ; 	// miliseconds

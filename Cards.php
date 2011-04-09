@@ -379,18 +379,36 @@ class BlackJackHand extends Hand
 	public function get_card_sum_value()
 	{
 		$sum = 0 ;
+		$aces = 0 ;
 		
-		foreach( $this->cards as &$card )
+		foreach( $this->cards as $card )
 		{
 			$value = $card->get_value() ;
 			$sum += $value ;
 			
-			if( self::ACE_VALUE === $value && $sum > self::MAX_HAND_VALUE )
+			if( $card->get_value() === self::ACE_VALUE )
 			{
-				self::reduce_this_ace_value( $card ) ;
-				return $this->get_card_sum_value() ;
+				$aces += 1 ;
 			}
+		}
 			
+		print "aces: {$aces}\n" ;
+		
+		if( $sum > self::MAX_HAND_VALUE && $aces > 0 )
+		{
+			print "\nfound ace hand with hand oversum\n" ;
+			for( $i=0; $i<$aces; $i+=1 )
+			{
+				$sum -= 10 ;
+				print "reduced an ace to 1\n" ;
+				
+				if( $sum <= self::MAX_HAND_VALUE )
+				{
+					print "reduced enough aces\n" ;
+					return $sum ;
+				}
+				//return $this->get_card_sum_value() ;					
+			}
 		}
 		
 		return $sum ;
@@ -430,9 +448,6 @@ class BlackJackHand extends Hand
 	{
 		$hand_str = "" ;
 		$card_count = count( $this->cards ) ;
-		
-		// optimize for ace presence before we print the actual string rep
-		$sum = $this->get_card_sum_value() ;
 		
 		for( $i=0; $i<$card_count; $i+=1 )
 		{
