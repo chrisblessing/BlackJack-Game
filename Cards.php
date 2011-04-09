@@ -401,11 +401,6 @@ class BlackJackHand extends Hand
 		$this->dealer_hand = (bool) $is_dealer_hand ;
 	}
 	
-	public function is_blackjack()
-	{
-		return ( $this->get_card_sum_value() === 21 && $this->get_card_count() === 2 ) ;
-	}
-	
 	public function is_dealer_hand()
 	{
 		return $this->dealer_hand ;

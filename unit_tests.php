@@ -210,7 +210,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 			$result = "BUST" ;
 			$bust_count += 1 ;
 		}
-		elseif( $hand->is_blackjack() )
+		elseif( BlackJackHandEvaluator::is_blackjack( $hand ) )
 		{
 			$result = "BLACKJACK!" ;
 			$blackjack_count += 1 ;
