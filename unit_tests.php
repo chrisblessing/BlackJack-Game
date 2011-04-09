@@ -98,10 +98,8 @@ for( $game=0; $game<$game_count; $game+=1 )
 		
 		//$deck = new MultiDeck( $deck_count, FALSE ) ;
 		$deck->reset() ;	// about 10% faster than 'new' over 5000 games with 6 players
-		$deck->reorder() ;
 		
-		print $deck->get_as_string() ;
-		exit;
+		//print $deck->get_as_string() ;
 		
 		//print "Resetting shoe with {$cards_remaining} cards remaining, new deck of {$deck->get_number_of_cards()}...\n" ;
 		$deck->shuffle( $shuffle_count ) ;
