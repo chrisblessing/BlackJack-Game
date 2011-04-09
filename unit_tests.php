@@ -104,6 +104,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 		//print "Resetting shoe with {$cards_remaining} cards remaining, new deck of {$deck->get_number_of_cards()}...\n" ;
 		$deck->shuffle( $shuffle_count ) ;
 		$deck->cut() ;
+		$game -= 1 ;
 		continue ;
 	}
 	
