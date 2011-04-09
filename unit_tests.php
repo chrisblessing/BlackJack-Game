@@ -57,11 +57,11 @@ $bust_count = 0 ;
 $blackjack_count = 0 ;
 $held_count = 0 ;
 
-$game_count = 10 ;
+$game_count = 1 ;
 $actual_game_count = 0 ; 	// incremented via iteration
 $deck_count = 6 ;
 $shuffle_count = 8 ;
-$num_players = 6 ; 			// # hands to deal (player count + dealer)
+$num_players = 3 ; 			// # hands to deal (player count + dealer)
 $num_cards_per_hand = 2 ; 	// # cards per hand (game-dependent)
 $necessary_card_count = ( $num_players * $num_cards_per_hand ) + 52 ;	// modify this for single and double deck blackjack
 	
@@ -262,8 +262,6 @@ $hand1->add_card( new Card( 0, ACE ) ) ;
 $hand1->add_card( new Card( 2, 2 ) ) ;
 $hand1->add_card( new Card( 1, ACE ) ) ;
 
-print $hand1->get_card_sum_value() ;
-
 $hand2 = new BlackJackHand() ;
 $hand2->add_card( new Card( 0, ACE ) ) ;
 $hand2->add_card( new Card( 0, 3 ) ) ;
@@ -286,7 +284,8 @@ if( !$is_equal )
 }
 
 
-/* dealer hand display test */
+// dealer hand display test
+/*
 $hand = new BlackJackHand() ;
 $hand->add_card( new Card( 0, KING ) ) ;
 $hand->add_card( new Card( 0, 8 ) ) ;
@@ -294,6 +293,29 @@ $hand->set_as_dealer_hand( TRUE ) ;
 
 print "\n\nA dealer hand: " . $hand->get_as_string() ;
 print "\n" ;
+*/
+
+// ace reduction test
+$hand = new BlackJackHand() ;
+$hand->add_card( new Card( 0, ACE ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 3 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 2 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, ACE ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+
+
+$hand = new BlackJackHand() ;
+$hand->add_card( new Card( 0, 3 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 1, ACE ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 3, ACE ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+$hand->add_card( new Card( 0, 7 ) ) ;
+print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
 
 $duration = ( microtime( true ) - $start ) * 1000 ; 	// miliseconds
 $end_mem = ( memory_get_usage() - $start_mem ) / 1024 ;

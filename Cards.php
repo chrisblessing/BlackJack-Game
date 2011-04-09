@@ -371,36 +371,26 @@ class BlackJackHand extends Hand
 	public function __construct()
 	{}
 	
-	protected static function reduce_next_ace_value( array &$cards )
+	protected static function reduce_this_ace_value( Card &$card )
 	{
-		foreach( $cards as $key => $card )
-		{
-			if( $card->get_value() == self::ACE_VALUE )
-			{
-				// try replacing this Ace card with a new '1' card and re-summing
-				$cards[$key] = new Card( $card->get_suit(), 1, true ) ;
-			}
-		}
+		$card = new Card( $card->get_suit(), 1, true ) ;
 	}
 	
 	public function get_card_sum_value()
 	{
 		$sum = 0 ;
-		$has_ace = FALSE ;
 		
-		foreach( $this->cards as $card )
+		foreach( $this->cards as &$card )
 		{
 			$value = $card->get_value() ;
 			$sum += $value ;
 			
-			if( self::ACE_VALUE === $value )
-				$has_ace = TRUE ;
-		}
-		
-		if( $has_ace && $sum > self::MAX_HAND_VALUE )
-		{
-			self::reduce_next_ace_value( $this->cards ) ;
-			return $this->get_card_sum_value() ;
+			if( self::ACE_VALUE === $value && $sum > self::MAX_HAND_VALUE )
+			{
+				self::reduce_this_ace_value( $card ) ;
+				return $this->get_card_sum_value() ;
+			}
+			
 		}
 		
 		return $sum ;
