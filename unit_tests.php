@@ -48,11 +48,11 @@ $bust_count = 0 ;
 $blackjack_count = 0 ;
 $held_count = 0 ;
 
-$game_count = 1000 ;
+$game_count = 100 ;
 $actual_game_count = 0 ; 	// incremented via iteration
-$deck_count = 1 ;
+$deck_count = 6 ;
 $shuffle_count = 8 ;
-$num_players = 6 ; 			// # hands to deal (player count + dealer)
+$num_players = 5 ; 			// # hands to deal (player count + dealer)
 $num_cards_per_hand = 2 ; 	// # cards per hand (game-dependent)
 $necessary_card_count = ( $num_players * $num_cards_per_hand ) + 52 ;	// modify this for single and double deck blackjack
 	
@@ -227,7 +227,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 			$held_count += 1 ;
 		}
 		
-		//print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
+		print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
 	}
 }
 
