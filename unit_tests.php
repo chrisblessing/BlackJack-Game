@@ -67,6 +67,15 @@ $necessary_card_count = ( $num_players * $num_cards_per_hand ) + 52 ;	// modify 
 	
 $num_players += 1 ;	// add a spot for the dealer of course	
 
+// @todo:
+/**
+ * - implement option for dealer stay on soft ace (currently the default)
+ * - implement actual classes for Table, Player, Dealer, Game
+ * 	- see below for procedural example
+ * - REST API layer for slick web play
+ * - front-end for the user (initially a simple theme)
+ */
+
 print "Generating initial shoe of {$deck_count} decks shuffled {$shuffle_count} times...\n\n" ;
 $deck = new MultiDeck( $deck_count, FALSE ) ;
 $deck->shuffle( $shuffle_count ) ;

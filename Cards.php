@@ -371,16 +371,14 @@ class BlackJackHand extends Hand
 	public function __construct()
 	{}
 	
-	protected static function reduce_this_ace_value( Card &$card )
-	{
-		$card = new Card( $card->get_suit(), 1, true ) ;
-	}
-	
 	public function get_card_sum_value()
 	{
+		// this method does not keep a static score; it will re-compute based on any new cards added
+		
 		$sum = 0 ;
 		$aces = 0 ;
 		
+		// first we need a total worst-case summation to see if we have to reduce aces
 		foreach( $this->cards as $card )
 		{
 			$value = $card->get_value() ;
@@ -391,23 +389,18 @@ class BlackJackHand extends Hand
 				$aces += 1 ;
 			}
 		}
-			
-		print "aces: {$aces}\n" ;
 		
+		// if we had aces available for reduction, try until we are below the sum threshold
 		if( $sum > self::MAX_HAND_VALUE && $aces > 0 )
 		{
-			print "\nfound ace hand with hand oversum\n" ;
 			for( $i=0; $i<$aces; $i+=1 )
 			{
 				$sum -= 10 ;
-				print "reduced an ace to 1\n" ;
 				
 				if( $sum <= self::MAX_HAND_VALUE )
 				{
-					print "reduced enough aces\n" ;
 					return $sum ;
-				}
-				//return $this->get_card_sum_value() ;					
+				}			
 			}
 		}
 		
