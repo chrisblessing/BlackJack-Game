@@ -138,12 +138,11 @@ class Card
 {
 	private $suit ;
 	private $value ;
-	private $is_face_down = FALSE ;
 	
-	public function __construct( $suit, $value )
+	public function __construct( $suit, $value, $override = FALSE )
 	{
 		$this->set_suit( $suit ) ;
-		$this->set_value( $value ) ;
+		$this->set_value( $value, $override ) ;
 	}
 	
 	public function set_suit( $suit )
@@ -164,16 +163,6 @@ class Card
 		{
 			throw new Exception( ERR_INVALID_CARD_VALUE ) ;
 		}
-	}
-	
-	public function hide_str_value()
-	{
-		$this->is_face_down = TRUE ;
-	}
-	
-	public function show_str_value()
-	{
-		$this->is_face_down = FALSE ;
 	}
 	
 	public function get_suit()
@@ -199,10 +188,10 @@ class Card
 		return ( $this->value === ACE ) ;
 	}
 	
-	public function get_as_string()
+	public function get_as_string( $is_face_down = FALSE )
 	{
-		$suit_letter = ( $this->is_face_down ) ? '*' : SuitEvaluator::get_suit_letter( $this->get_suit() ) ;
-		$card_value = ( $this->is_face_down ) ? '*' : CardValueEvaluator::get_value_letter( $this->value ) ;
+		$suit_letter = ( $is_face_down ) ? '*' : SuitEvaluator::get_suit_letter( $this->get_suit() ) ;
+		$card_value = ( $is_face_down ) ? '*' : CardValueEvaluator::get_value_letter( $this->value ) ;
 		return '{' . $card_value . ':' . $suit_letter . '}' ;
 	}
 	
@@ -282,6 +271,18 @@ class Deck
 	{
 		return $this->cards ;
 	}
+	
+	public function cut()
+	{
+		// cuts the deck randomly between (card count*.2) and (card count*.8)
+		$card_count = $this->get_number_of_cards() ;
+		$lower_bound = round( $card_count * 0.2, 0 ) ;
+		$upper_bound = round( $card_count * 0.8, 0 ) ;
+		$cut_index = (int) rand( $lower_bound, $upper_bound ) ;
+		
+		// cut it up: top to bottom
+		$this->cards = array_slice( $this->cards, $cut_index, NULL, TRUE ) + array_slice( $this->cards, 0, $cut_index, TRUE ) ;
+	}
 }
 
 class MultiDeck extends Deck
@@ -294,10 +295,17 @@ class MultiDeck extends Deck
 			
 		for( $i=0; $i<$n; $i++ )
 		{
+			// get a collection of references to the original deck cards, we're not duplicating cards here
+			
 			// get_all_cards isnt properly appended due to duplicate keys >:|
 			$j = 0 ;
 			while( isset( $cards[$j] ) )
 			{
+				// test of card copying yields significant performance decrease 
+				//$card = $cards[$j] ;
+				//$this->cards[] = new Card( $card->get_suit(), $card->get_value() ) ;
+				
+				// by reference instead...
 				$this->cards[] = $cards[$j] ;
 				$j++ ;
 			}
@@ -342,7 +350,6 @@ class Hand
 			$hand_str .= $card->get_as_string() . " " ;
 		}
 		
-		$hand_str .= "\n" ;
 		return $hand_str ;
 	}
 	
@@ -357,25 +364,23 @@ class BlackJackHand extends Hand
 	const ACE_VALUE = 11 ;
 	const MAX_HAND_VALUE = 21 ;
 	
-	private $is_dealer_hand = FALSE ;
-	private $dealer_card_flipped = FALSE ;
+	protected $dealer_hand = FALSE ;
+	protected $drawing = FALSE ;
+	protected $final = FALSE ;
 	
 	public function __construct()
 	{}
 	
 	protected static function reduce_next_ace_value( array &$cards )
 	{
-		foreach( $cards as &$card )
+		foreach( $cards as $key => $card )
 		{
 			if( $card->get_value() == self::ACE_VALUE )
 			{
-				// try setting this Ace to '1' and re-summing
-				$card->set_value( 1, TRUE ) ;
-				return TRUE ;
+				// try replacing this Ace card with a new '1' card and re-summing
+				$cards[$key] = new Card( $card->get_suit(), 1, true ) ;
 			}
 		}
-		
-		return FALSE ;
 	}
 	
 	public function get_card_sum_value()
@@ -403,39 +408,61 @@ class BlackJackHand extends Hand
 	
 	public function set_as_dealer_hand( $is_dealer_hand )
 	{
-		$this->is_dealer_hand = (bool) $is_dealer_hand ;
-		$this->cards[0]->hide_str_value() ;
+		$this->dealer_hand = (bool) $is_dealer_hand ;
+	}
+	
+	public function is_blackjack()
+	{
+		return ( $this->get_card_sum_value() === 21 && $this->get_card_count() === 2 ) ;
 	}
 	
 	public function is_dealer_hand()
 	{
-		return $this->is_dealer_hand ;
+		return $this->dealer_hand ;
 	}
 	
-	public function flip_dealer_card()
+	public function set_as_drawing()
 	{
-		// flip the first card of the hand face up
-		$this->cards[0]->show_str_value() ;
-		$this->dealer_card_flipped = TRUE ;
+		$this->drawing = TRUE ;
 	}
 	
-	public function is_dealer_card_up()
+	public function set_as_final()
 	{
-		return $this->dealer_card_flipped ;
+		$this->final = TRUE ;
+	}
+
+	public function is_drawing()
+	{
+		return $this->drawing ;
+	}
+	
+	public function is_final()
+	{
+		return $this->final ;
 	}
 	
 	public function get_as_string()
 	{
 		$hand_str = "" ;
+		$card_count = count( $this->cards ) ;
 		
-		foreach( $this->cards as $card )
-		{
-			$hand_str .= $card->get_as_string() . ' ' ;
-		}
+		// optimize for ace presence before we print the actual string rep
+		$sum = $this->get_card_sum_value() ;
 		
-		if( $this->dealer_card_flipped || !$this->is_dealer_hand() )
+		for( $i=0; $i<$card_count; $i+=1 )
 		{
-			$hand_str .= "\t[{$this->get_card_sum_value()}]" ;
+			$card = $this->cards[$i] ;
+			
+			// if this is a dealer hand and it's the first card and there's no drawing yet, hide the first card
+			if( $this->is_dealer_hand() && $i === 0 && !$this->is_drawing() )
+			{
+				// first card face down
+				$hand_str .= $card->get_as_string( TRUE ) . ' ' ;
+			}
+			else
+			{
+				$hand_str .= $card->get_as_string() . ' ' ;
+			}
 		}
 		
 		return $hand_str ;
