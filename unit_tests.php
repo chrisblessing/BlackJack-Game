@@ -44,19 +44,27 @@ foreach( $deck->get_all_cards() as $card )
 }
 */
 
+// stat counters
 $bust_count = 0 ;
 $blackjack_count = 0 ;
 $held_count = 0 ;
+$draw_count = 0 ;
+$hand_count = 0 ;
+$game_reset_count = 0 ;
+$card_count = 0 ;
 
-$game_count = 100 ;
-$actual_game_count = 0 ; 	// incremented via iteration
+// actual settings for game play
+$game_count = 50 ;
 $deck_count = 6 ;
 $shuffle_count = 8 ;
 $num_players = 5 ; 			// # hands to deal (player count + dealer)
 $num_cards_per_hand = 2 ; 	// # cards per hand (game-dependent)
-$necessary_card_count = ( $num_players * $num_cards_per_hand ) + 52 ;	// modify this for single and double deck blackjack
-	
-$num_players += 1 ;	// add a spot for the dealer of course	
+
+// need a number to check for when the shoe is running low
+$necessary_card_count = ( $num_players * $num_cards_per_hand ) * 3 ;	// modify this for single and double deck blackjack
+
+// add a spot for the dealer (need to handle this better obviously)
+$num_players += 1 ;	
 
 // @todo:
 /**
@@ -98,6 +106,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 		
 		//$deck = new MultiDeck( $deck_count, FALSE ) ;
 		$deck->reset() ;	// about 10% faster than 'new' over 5000 games with 6 players
+		$game_reset_count += 1 ;
 		
 		//print $deck->get_as_string() ;
 		
@@ -108,8 +117,6 @@ for( $game=0; $game<$game_count; $game+=1 )
 		continue ;
 	}
 	
-	$actual_game_count += 1 ;
-
 	/*
 	else
 	{
@@ -137,6 +144,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 			try
 			{
 				$hand->add_card( $deck->get_card() ) ;
+				$card_count += 1 ;
 			}
 			catch( Exception $e )
 			{
@@ -197,6 +205,8 @@ for( $game=0; $game<$game_count; $game+=1 )
 			{
 				//$draw = $hand->is_dealer_hand() || (bool)trim( fgets( STDIN ) ) ;	// comment out for automatic drawing
 				$hand->add_card( $deck->get_card() ) ;
+				$draw_count += 1 ;
+				$card_count += 1 ;
 				
 				// re-sum the hand with this new card in mind
 				$sum = $hand->get_card_sum_value() ;
@@ -210,6 +220,7 @@ for( $game=0; $game<$game_count; $game+=1 )
 		}
 		
 		$hand->set_as_final() ;
+		$hand_count += 1 ;
 		$result = "" ;
 		
 		if( $sum > 21 ) 
@@ -228,17 +239,22 @@ for( $game=0; $game<$game_count; $game+=1 )
 			$held_count += 1 ;
 		}
 		
-		print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
+		//print "\t" . $hand->get_as_string() . " [{$sum}] -- {$result}\n" ;
 	}
 }
 
-print "\nGames attempted: {$game} (actual: {$actual_game_count})\nResults:\n" ;
-print "Held: {$held_count}\nBust: {$bust_count}\nBlackjack: {$blackjack_count}\n" ;
+$duration = ( microtime( true ) - $start ) * 1000 ; 	// miliseconds
+$end_mem = ( memory_get_usage() - $start_mem ) / 1024 ;
+
+print "\nGames played: {$game}\nResults:\n" ;
+print "Total hands: {$hand_count} \tTotal cards drawn: {$draw_count}\n" ;
+print "Total cards in play: {$card_count} \tTotal cancelled games: {$game_reset_count}\n" ;
+print "Held: {$held_count} \nBust: {$bust_count} \nBlackjack: {$blackjack_count}\n" ;
 
 $uniqid = uniqid() ;
 
 print "Game group id: {$uniqid}\n" ;
-$sql = "INSERT INTO blackjack_hands (group_id, game_count, bust_count, hold_count, blackjack_count, player_count, deck_count) VALUES ('{$uniqid}', '{$actual_game_count}', '{$bust_count}', '{$held_count}', '{$blackjack_count}', '{$num_players}', '{$deck_count}')" ;
+$sql = "INSERT INTO blackjack_hands (group_id, game_count, bust_count, hold_count, blackjack_count, player_count, deck_count) VALUES ('{$uniqid}', '{$game}', '{$bust_count}', '{$held_count}', '{$blackjack_count}', '{$num_players}', '{$deck_count}')" ;
 
 // MySQL db to track hands in batches
 $mysqli = new mysqli( $hostname, $username, $password, $db_name );
@@ -253,101 +269,147 @@ print "Making DB insertion...\n" ;
 if( $mysqli->query( $sql ) === FALSE ) 
 {
 	die( "Error: could not insert the game data into the db" ) ;
+	print "\nClosing DB connection...\n" ;
+	$mysqli->close();
 }
 
-//print "\n\nCards remaining: " ;
-//print count( $deck->get_all_cards() );
-	
-// static example of a hand with an Ace resulting in ace reduction to 1
-/*
-$hand = new BlackJackHand() ;
-$hand->add_card( new Card( 0, ACE ) ) ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-$hand->add_card( new Card( 0, KING ) ) ;
-$hand->add_card( new Card( 0, 9 ) ) ;
-
-print "\n\nnew hand: " . $hand->get_as_string() ;
-print "\n" ;
-*/
-
-// static test of hand comparison
-/*
-$hand1 = new BlackJackHand() ;
-$hand1->add_card( new Card( 0, ACE ) ) ;
-$hand1->add_card( new Card( 2, 2 ) ) ;
-$hand1->add_card( new Card( 1, ACE ) ) ;
-
-$hand2 = new BlackJackHand() ;
-$hand2->add_card( new Card( 0, ACE ) ) ;
-$hand2->add_card( new Card( 0, 3 ) ) ;
-
-print "\nhand1: {$hand1->get_as_string()}\thand2: {$hand2->get_as_string()}\n" ;
-
-$is_equal = (int) BlackJackHandEvaluator::compare_for_equality( $hand1, $hand2 ) ;
-$hand1_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand1 ) ;
-$hand2_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand2 ) ;
-
-print "is hand1 blackjack? {$hand1_bj_status}\n" ;
-print "is hand2 blackjack? {$hand2_bj_status}\n" ;
-
-print "are the hands equal? {$is_equal}\n" ;
-
-if( !$is_equal )
-{
-	$highest_hand = BlackJackHandEvaluator::compare_for_highest_hand( $hand1, $hand2 ) ;
-	print "the larger hand is: {$highest_hand->get_as_string()}\n" ;
-}
-*/
-
-// dealer hand display test
-/*
-$hand = new BlackJackHand() ;
-$hand->add_card( new Card( 0, KING ) ) ;
-$hand->add_card( new Card( 0, 8 ) ) ;
-$hand->set_as_dealer_hand( TRUE ) ;
-
-print "\n\nA dealer hand: " . $hand->get_as_string() ;
-print "\n" ;
-*/
-
-// ace reduction test
-/*
-$hand = new BlackJackHand() ;
-$hand->add_card( new Card( 0, ACE ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, ACE ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-
-
-$hand = new BlackJackHand() ;
-$hand->add_card( new Card( 0, 3 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, ACE ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, ACE ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 3 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-$hand->add_card( new Card( 0, 2 ) ) ;
-print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
-*/
-
-$duration = ( microtime( true ) - $start ) * 1000 ; 	// miliseconds
-$end_mem = ( memory_get_usage() - $start_mem ) / 1024 ;
-
-print "\n\nClosing DB connection..." ;
+print "Closing DB connection...\n" ;
 $mysqli->close();
 
-print "\n\nTime elapsed (ms): {$duration}" ;	
+try
+{
+	//print "\n\nCards remaining: " ;
+	//print count( $deck->get_all_cards() );
+		
+	// static example of a hand with an Ace resulting in ace reduction to 1
+	/*
+	$hand = new BlackJackHand() ;
+	$hand->add_card( new Card( 0, ACE ) ) ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	$hand->add_card( new Card( 0, KING ) ) ;
+	$hand->add_card( new Card( 0, 9 ) ) ;
+	
+	print "\n\nnew hand: " . $hand->get_as_string() ;
+	print "\n" ;
+	*/
+	
+	// static test of hand comparison
+	/*
+	$hand1 = new BlackJackHand() ;
+	$hand1->add_card( new Card( 0, ACE ) ) ;
+	$hand1->add_card( new Card( 2, 2 ) ) ;
+	$hand1->add_card( new Card( 1, ACE ) ) ;
+	
+	$hand2 = new BlackJackHand() ;
+	$hand2->add_card( new Card( 0, ACE ) ) ;
+	$hand2->add_card( new Card( 0, 3 ) ) ;
+	
+	print "\nhand1: {$hand1->get_as_string()}\thand2: {$hand2->get_as_string()}\n" ;
+	
+	$is_equal = (int) BlackJackHandEvaluator::compare_for_equality( $hand1, $hand2 ) ;
+	$hand1_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand1 ) ;
+	$hand2_bj_status = (int) BlackJackHandEvaluator::is_blackjack( $hand2 ) ;
+	
+	print "is hand1 blackjack? {$hand1_bj_status}\n" ;
+	print "is hand2 blackjack? {$hand2_bj_status}\n" ;
+	
+	print "are the hands equal? {$is_equal}\n" ;
+	
+	if( !$is_equal )
+	{
+		$highest_hand = BlackJackHandEvaluator::compare_for_highest_hand( $hand1, $hand2 ) ;
+		print "the larger hand is: {$highest_hand->get_as_string()}\n" ;
+	}
+	*/
+	
+	// dealer hand display test
+	/*
+	$hand = new BlackJackHand() ;
+	$hand->add_card( new Card( 0, KING ) ) ;
+	$hand->add_card( new Card( 0, 8 ) ) ;
+	$hand->set_as_dealer_hand( TRUE ) ;
+	
+	print "\n\nA dealer hand: " . $hand->get_as_string() ;
+	print "\n" ;
+	*/
+	
+	// ace reduction test
+	/*
+	$hand = new BlackJackHand() ;
+	$hand->add_card( new Card( 0, ACE ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, ACE ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	
+	
+	$hand = new BlackJackHand() ;
+	$hand->add_card( new Card( 0, 3 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, ACE ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, ACE ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 3 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	$hand->add_card( new Card( 0, 2 ) ) ;
+	print $hand->get_as_string() . " " . $hand->get_card_sum_value() . "\n" ;
+	*/
+	
+	// table and player object tests
+	$players = array() ;
+	
+	for( $i=0; $i<7; $i++ )
+	{
+		$players[] = new Player( 'Player' . $i ) ;
+	}
+	
+	$table = new BlackJackTable( 10, $players ) ;
+	$player = new Player( 'Chris' ) ;
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	
+	
+	var_dump($table->get_current_active_seat());
+	var_dump($table->get_current_active_seat());
+	$table->set_next_occupied_seat_active() ;
+	var_dump($table->get_current_active_seat());
+	$table->set_next_occupied_seat_active() ;
+	var_dump($table->get_current_active_seat());
+	$table->set_next_occupied_seat_active() ;
+	var_dump($table->get_current_active_seat());
+	$table->set_next_occupied_seat_active() ;
+	var_dump($table->get_current_active_seat());
+	var_dump($table);
+	
+	/*
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	
+	// should error
+	$table->seat_player( $player ) ;
+	var_dump($table);
+	*/
+}
+catch( Exception $e )
+{
+	print "\n\n############# Error! {$e->getMessage()}\n" ;
+}
+print "\n\nProcessing time (ms): {$duration}" ;	
 print "\nMemory used (kb): {$end_mem}\n\n" ; 
 
 ?>

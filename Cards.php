@@ -13,6 +13,11 @@ define( 'DIAMONDS', 3 ) ;
 define( 'ERR_DECK_EMPTY', 'No cards left to deal.' ) ;
 define( 'ERR_INVALID_CARD_VALUE', 'Invalid card value' ) ;
 define( 'ERR_SEAT_UNAVAIL', 'Cannot sit where a player is already seated.' ) ;
+define( 'ERR_TABLE_FULL', 'Cannot add more players; table is full.' ) ;
+define( 'ERR_INVALID_PLAYER_OBJ', 'Invalid player object.' ) ;
+define( 'ERR_DECK_COMPROMISED', 'Cannot reorder a deck once cards have been drawn; try reset().' ) ;
+define( 'ERR_CANNOT_REMOVE_DEALER', 'Cannot remove dealer from table.' ) ;
+define( 'ERR_TABLE_HAS_DEALER', 'Cannot replace dealer at table; start a new table instead.' ) ;
 
 class CardValueEvaluator
 {
@@ -239,7 +244,7 @@ class Deck
 		}
 		else
 		{
-			throw new Exception( "Cannot reorder an incomplete deck; cards have already been drawn." ) ;
+			throw new Exception( ERR_DECK_COMPROMISED ) ;
 		}	}
 	
 	public function get_card()
@@ -358,7 +363,7 @@ class MultiDeck extends Deck
 			$j = 0 ;
 			while( isset( $cards[$j] ) )
 			{
-				// test of card copying yields significant performance decrease 
+				// test of card copying yields significant performance decrease over recycling
 				//$card = $cards[$j] ;
 				//$this->cards[] = new Card( $card->get_suit(), $card->get_value() ) ;
 				
@@ -519,71 +524,254 @@ class BlackJackHand extends Hand
 	}
 }
 
-abstract class Game
+abstract class Table
 {
-	// each seat can hold one Player
-	protected $seats = array() ;
+	protected $num_seats = 6 ;			// constructor will always accept a new table size
+	protected $seats = array() ;		// array of Players (can be more than one seat to a player)
+	protected $active_seat = NULL ;		// index to $seats for active player
 	
-	protected function add_player( Player $player ) {}
-	protected function remove_player( Player $player ) {}
-	protected function get_player_order() {}
+	public function get_seat_order() {}
+	public function deal_card_to_player( Player $player ) {}
+	public function get_player_hand_sum( Player $player ) {}
 	
-}
-
-class GameSeat
-{
-	protected $player ;
-	
-	public function __construct( Player $player )
+	protected function is_seat_available( $seat_index )
 	{
-		$this->seat_player( $player ) ;
+		return !isset( $this->seats[$seat_index] ) ;
 	}
 	
-	public function seat_player( Player $player ) 
+	protected function is_valid_seat_index( $seat_index ) 
 	{
-		if( empty( $this->player ) )
+		return is_int( $seat_index ) && $seat_index >= 0 && $seat_index < $this->num_seats ;
+	}
+	
+	protected function is_table_full()
+	{
+		return count( $this->seats ) === $this->num_seats ;
+	}
+	
+	protected function set_active_seat( $seat_index ) 
+	{
+		if( $this->is_valid_seat_index( $seat_index ) )
 		{
-			$this->player = $player ;
+			$this->active_seat = $seat_index ;
+		}
+	}
+	
+	public function get_current_active_seat()
+	{
+		return $this->active_seat ;
+	}
+	
+	public function get_next_available_seat()
+	{
+		$avail_seats = $this->get_available_seats() ;
+		
+		if( count( $avail_seats ) > 0 )
+		{
+			return $avail_seats[0] ;
+		}
+		
+		throw new Exception( ERR_TABLE_FULL ) ;
+	}
+	
+	public function get_available_seats()
+	{
+		$num_seats = $this->num_seats ;
+		$avail_seats = array() ;
+		
+		for( $i=0; $i<$num_seats; $i++ )
+		{
+			if( $this->is_seat_available( $i ) )
+			{
+				$avail_seats[] = $i ;
+			}
+		}
+		
+		return $avail_seats ;
+	}
+	
+	protected function set_dealer_seat( Player $player )
+	{
+		$has_dealer = isset( $this->seats[$this->num_seats - 1] ) && $this->seats[$this->num_seats - 1]->is_dealer() ;
+		
+		if( !$has_dealer )
+		{
+			$this->seats[$this->num_seats - 1] = $player ;
 		}
 		else
 		{
-			throw new Exception( ERR_SEAT_UNAVAIL ) ;
+			throw new Exception( ERR_TABLE_HAS_DEALER ) ;
 		}
 	}
 	
-	public function remove_player()
+	public function seat_player( Player $player, $seat_index = NULL ) 
 	{
-		unset( $this->player ) ;
+		if( $this->is_table_full() )
+		{
+			throw new Exception( ERR_TABLE_FULL ) ;
+		}
+		
+		if( !empty( $player ) )
+		{
+			if( $player->is_dealer() )
+			{
+				$this->set_dealer_seat( $player ) ;
+			}
+			elseif( $this->is_valid_seat_index( $seat_index ) && $this->is_seat_available( $seat_index ) )
+			{
+				$this->seats[$seat_index] = $player ;
+			}
+			else
+			{
+				$seat_index = $this->get_next_available_seat() ;
+				
+				if( $seat_index !== FALSE )
+				{
+					$this->seats[$seat_index] = $player ;				
+				}
+				else
+				{
+					throw new Exception( ERR_SEAT_UNAVAIL ) ;
+				}
+			}
+			
+			// if this is the first player at the table, they are the active seat and first to act (must not be dealer)
+			if( !$player->is_dealer() && $this->get_current_active_seat() === NULL )
+			{
+				$this->set_active_seat( $seat_index ) ;
+			}
+		}
+		else
+		{
+			throw new Exception( ERR_INVALID_PLAYER_OBJ ) ;
+		}
+	}
+	
+	// removes a player from the table completely, all seats
+	public function remove_player( Player $player )
+	{
+		foreach( $this->seats as $player_index => $current_player )
+		{
+			if( $player->is_dealer() )
+			{
+				throw new Exception( ERR_CANNOT_REMOVE_DEALER ) ;
+			}
+			
+			if( $player == $current_player )
+			{
+				unset( $this->seats[$player_index] ) ;
+			}
+		}
+	}
+	
+	public function remove_player_from_seat( $seat_index )
+	{
+		if( $this->is_valid_seat_index( $seat_index ) )
+		{
+			$player = $this->seats[$seat_index] ;
+			if( !$player->is_dealer() )
+			{
+				unset( $this->seats[$seat_index] ) ;
+				
+				if( $this->active_seat === $seat_index )
+				{
+					$this->set_next_occupied_seat_active() ;
+				}
+			}
+			else
+			{
+				throw new Exception( ERR_CANNOT_REMOVE_DEALER ) ;
+			}
+		}
+	}
+	
+	public function set_next_occupied_seat_active()
+	{
+		$this->set_active_seat( $this->get_next_occupied_seat( $this->active_seat ) ) ;
+	}
+	
+	public function get_next_occupied_seat( $from_seat_index )
+	{
+		if( $this->is_valid_seat_index( $from_seat_index ) )
+		{
+			if( $from_seat_index === $this->num_seats - 1 )
+				$from_seat_index = -1 ;
+				
+			for( $i=$from_seat_index+1; $i<$this->num_seats; $i++ )
+			{
+				if( !$this->is_seat_available( $i ) )
+				{
+					return $i ;
+				}
+			}
+		}
 	}
 }
 
-class BlackJackGame extends Game
+class GenericTable extends Table
 {
-	protected $seats ;
-	
-	public function __construct()
+	public function __construct( $n = 1 )
+	{
+		// note: no default dealer here
+		$this->num_seats = (int) $n ;
+	}
+}
+
+class BlackJackTable extends Table
+{
+	public function __construct( $n = 6, array $players = NULL )
 	{
 		// create $n seats + 1 for the dealer (so 0-$n = $n+1)
+		$this->num_seats = (int) $n + 1 ;
 		
-		// need to create methodology for setting up empty table, then allowing seats to be occupied
-		$this->seats = range( 0, $n, 1 ) ;
+		// auto-add a dealer to this BlackJack Table
+		$this->seat_player( new Dealer( 'Dealer' ) ) ;	// seat the dealer of course, last seat avail
+		
+		// if Players were supplied, populate the table
+		if( !empty( $players ) )
+		{
+			foreach( $players as $player )
+			{
+				$this->seat_player( $player ) ;
+			}
+		}
 	}
 	
 }
 
 class Player
 {
-	public function __construct()
-	{}
+	public function __construct( $name = NULL )
+	{
+		$this->set_name( $name ) ;
+	}
 	
-	public function set_name( $name = '' )
-	{}
+	public function is_dealer()
+	{
+		return $this instanceOf Dealer ;
+	}
+	
+	public function set_name( $name = NULL )
+	{
+		if( !empty( $name ) )
+		{
+			$this->name = $name ;
+		}
+		else
+		{
+			$this->name = uniqid() ;
+		}
+	}
 	
 	public function get_name()
-	{}
+	{
+		return $this->name ;
+	}
 	
-	public function add_hand()
-	{}
+	public function add_hand( Hand $hand )
+	{
+		
+	}
 	
 	public function remove_hand()
 	{}
@@ -591,6 +779,24 @@ class Player
 	public function track_stat( $key, $value )
 	{
 		// flesh out this key/value business for player stats during a game, or long-term
+	}
+	
+	public function get_stat( $key )
+	{
+		
+	}
+	
+	public function get_all_stats()
+	{
+		
+	}
+}
+
+class Dealer extends Player
+{
+	public function __construct( $name = NULL )
+	{
+		$this->set_name( $name ) ;
 	}
 }
 
